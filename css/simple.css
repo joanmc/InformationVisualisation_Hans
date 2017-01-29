@@ -1,0 +1,97 @@
+
+*{
+    font-family: "Helvetica Neue";
+}
+
+#headings {
+    width: 100%;
+    margin: 0 auto;
+}
+
+#content{
+    width: 80%;
+    margin: 0 auto;
+    position: relative;
+}
+
+#contentB{
+    width: 85%;
+    height: 85%;
+    margin: 0 auto;
+    position: relative;
+}
+
+#visualisation {
+    margin: 0 auto; 
+    font-size: 14px;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+.axis{
+    margin: 10px 10px 10px 10px;
+}
+
+#controls { 
+    width: 80%;
+    margin: 10px auto;
+    padding-bottom: 100px;
+
+}
+
+#icon {
+    float: left;
+    width: 50px;
+    height: 50px;
+    padding: 2px;
+}
+
+#icon-wrapper{
+    float: left;
+}
+
+#play, #pause{
+    width: 50px;
+    height: 50px;
+}
+
+#slider-wrapper{
+    width: 88%;
+    float: right;
+    padding: 15px;
+}
+
+#value {
+    padding-top: 20px;
+    position: relative;
+}
+
+.year {
+    font-size: 300px;
+    font-weight: 200;
+    fill: #a8a8a8;
+}
+
+rect {                                                      
+    stroke-width: 3;                                          
+} 
+
+.legend{
+    text-transform:capitalize;
+    font-size: 14px;
+}
+
+.d3-tip {
+  font-weight: bold;
+  padding: 8px;
+  background: #696969;
+  color: white;
+  border-radius: 2px;
+}
+
+                                          

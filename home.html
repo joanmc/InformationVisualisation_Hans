@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang = "en" class="tas-com">
+	<head>
+        <meta charset="utf-8">
+		<title>Channeling Hans</title>
+		<link type="text/css" rel="stylesheet" href="css/simple.css"/>
+        <link rel="icon" href="./images/globe.png">
+        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script> 
+	</head>
+	<body>
+        <div id="headings">
+            <h1>COMP40610 Visualisation Assignment</h1>
+            <h2>Part A: Channelling Hans</h2>
+        </div>
+        <div id="content">
+            <div id="visualisation"></div>
+            <div id="controls">
+                <img id="icon" class="play" src="./images/play.png">
+                <img id="icon" class="restart" src="./images/restart.png">
+                <div id="slider-wrapper"><div id="slider"><div id="value"></div></div></div>
+            </div>
+		</div>
+        
+        
+		<script type="text/javascript">
+            // Define margins
+            var margin = {top: 25, right: 25, bottom: 50, left: 100};
+
+            //Width and height
+            var outer_width = 1450;
+            var outer_height = 750;
+            var svg_width = outer_width - margin.left - margin.right;
+            var svg_height = outer_height - margin.top - margin.bottom;
+            
+            // Rectangle size for legend
+            var legendRectSize = 18;
+            var legendSpacing = 4;
+            
+            // global variables
+            var dataset;
+            var display_year;
+            
+            // function to filter data by year
+            function yearFilter(value){
+                return (value.Year == display_year)
+            }
+            
+            // function to order the circle elements by radius size
+             function order(a, b) {
+                return rScale(b) - rScale(a);
+              }
+            
+            //Create SVG element as a group with the margins transform applied to it
+            var svg = d3.select("#visualisation")
+                            .append("svg")
+                            .attr("width", svg_width + margin.left + margin.right)
+                            .attr("height", svg_height + margin.top + margin.bottom)
+                            .append("g")
+                            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            
+            /******** SET SCALES ************/
+            // Create a scale to scale income per capita values nicely 
+            var xScale = d3.scale.log().range([0, svg_width]);
+            // Create a scale to scale Life Expectancy values nicely 
+            var yScale = d3.scale.linear().range([svg_height,0]);
+            //scale bubble size
+            var rScale = d3.scale.sqrt().range([2,50]);
+            // colour bubbles by region
+            var colorScale = d3.scale.category10();
+            
+            /******** DEFINE AXIS ************/
+            // Create an x-axis connected to the x scale
+            var xAxis = d3.svg.axis()
+                         .scale(xScale)
+                         .orient("bottom")
+                         .tickFormat(function (d) {
+                            return xScale.tickFormat(1,d3.format(",d"))(d)
+                        });
+            // Create an y-axis connected to the y scale
+            var yAxis = d3.svg.axis()
+                              .scale(yScale)
+                              .ticks(10)
+                              .orient("left");
+           
+            /******** CALL AXIS ************/
+            // Call the x-axis
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + svg_height + ")")
+                .attr("id", "x-axis");
+            // Label x axis
+            svg.append("text")
+                    .attr("class", "axis")
+                    .attr("text-anchor", "left")
+                    .attr("x", 0)
+                    .attr("y", svg_height + margin.bottom/2)
+                    .text("Income per capita, GDP/capita");
+            
+            // Call the y axis
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("id", "y-axis");
+            // Label y axis
+            svg.append("text")
+                    .attr("class", "axis")
+                    .attr("text-anchor", "middle")
+                    .attr("y", 0 - margin.top/2)
+                    .attr("x", 0)
+                    .text("Life expectancy, years");
+            // Display year in middle of visualisation
+            svg.append("text")
+                    .attr("class", "year")
+                    .attr("text-anchor", "middle")
+                    .attr("y", svg_height/2)
+                    .attr("x", svg_width/2)
+                    .text(display_year);
+            
+            /******** D3 tips ************/
+            // tip to display country label on mouseover of circle element
+            var tip = d3.tip()
+                          .attr('class', 'd3-tip')
+                          .offset([-10, 0])
+                          .html(function(d) {
+                            return "<span>" + d.Country + "</span>";
+                          });
+            svg.call(tip);
+
+            // Define a fucntion to draw the visualisation
+            function generateVis(){
+                // filter the dataset according to the display year
+                var filtered_datset = dataset.filter(yearFilter).sort(order);
+                
+                /******** SET SCALE DOMAINS ************/
+                // reduce the minimum values of x and y domains to ensure points do not overlap the axis
+                xScale.domain([d3.min(dataset, function(d) { return +d.GDP; }) - margin.right/2,
+                               d3.max(dataset, function(d) { return +d.GDP; }) ]);
+                yScale.domain([d3.min(dataset, function(d) { return +d.LifeExp; }) - margin.top/2,
+                               d3.max(dataset, function(d) { return +d.LifeExp; })]);
+                rScale.domain([d3.min(dataset, function(d) { return +d.Population; }) ,
+                               d3.max(dataset, function(d) { return +d.Population; }) ]);
+                
+                /*********** CALL THE AXIS ************/
+                svg.select("#x-axis").call(xAxis);
+                svg.select("#y-axis").call(yAxis);
+                
+                /******** PERFORM DATA JOIN ************/
+                // Join new data with old elements, if any.
+                var points = svg.selectAll("circle")
+                                .data(filtered_datset, function key(d) {
+                                        return d.Country;
+                                    });
+                
+                /******** HANDLE UPDATE SELECTION ************/
+                // Update the display of existing elelemnts to match new data
+                // Perform a data join and add points to the chart
+                points
+                    .transition()
+                    .ease('linear')
+				    .duration(900)
+                    .attr({
+                        cx: function(d){ return xScale(d.GDP) },
+                        cy: function(d){ return yScale(d.LifeExp) },
+                        r: function(d){ return rScale(d.Population) },
+                        "fill": function(d){ return colorScale(d.Region) },
+                        "stroke-width": 0.5,
+                        "stroke": "black"
+                    });
+                
+                /******** HANDLE ENTER SELECTION ************/
+                // Create new elements in the dataset
+                // Perform a data join and add points to the chart
+                points.enter()
+                    .append("circle")
+                    .attr("class", function(d) { return d.Region.replace(/ /g,''); })
+                    .on('mouseover', function(d){
+                        // on mouseover of circle, show country label  (d3-tip) and change opacity of all other circles for emphasis
+                        tip.show(d);
+                        d3.selectAll("circle").style("opacity", "0.5");
+                        d3.select(this)
+                            .style("opacity", "1")
+                            .style("stroke-width", 0.8);
+                    })
+                    .on('mouseout', function(d){
+                        tip.hide(d);
+                        d3.selectAll("circle").style("opacity", "1");
+                        d3.select(this).style("stroke-width", 0.8);
+                    })
+                    .transition()
+                    .ease('linear')
+                    .duration(900)
+                    .attr({
+                        cx: function(d){ return xScale(d.GDP) },
+                        cy: function(d){ return yScale(d.LifeExp) },
+                        r: function(d){ return rScale(d.Population) },
+                        "fill": function(d){ return colorScale(d.Region)},
+                        "stroke-width": 0.5,
+                        "stroke": "black"
+                    });
+            
+                /*************** ADD LEGEND ******************/
+                var legend = svg.selectAll('.legend')
+                              .data(colorScale.domain())
+                              .enter()
+                              .append('g')
+                              .attr('class', 'legend')
+                              .attr('transform', function(d, i) {
+                                var height = legendRectSize + legendSpacing;
+                                var offset =  height * colorScale.domain().length / 2;
+                                var horz = -2 * legendRectSize + 50;
+                                var vert = i * height - offset + 100;
+                                return 'translate(' + horz + ',' + vert + ')';
+                              });
+                // Rectangles with colour of Region            
+                legend.append('rect')
+                      .attr('width', legendRectSize)
+                      .attr('height', legendRectSize)
+                      .style('fill', colorScale)
+                      .style('stroke', colorScale)
+                      .on("click", function(label) {
+                            // Show and hide selected region on click //** EXTRA FEATURE **//
+                            label = label.replace(/ /g,'');
+                            region = d3.selectAll("." + label + "")
+                            if (region.style("visibility") == "hidden"){
+                                region.style("visibility", "visible");
+                                d3.select(this).style("fill",d3.select(this).style("stroke"));
+                            } else {
+                                region.style("visibility", "hidden");
+                                d3.select(this).style("fill", "white");
+                            }     
+                      });
+                // Text with Region name
+                legend.append('text')
+                  .attr('x', legendRectSize + legendSpacing)
+                  .attr('y', legendRectSize - legendSpacing)
+                  .text(function(d) { return d; });
+     
+                /******** HANDLE EXIT SELECTION ************/
+                // Remove elements that not longer have a matching data element
+                points.exit().remove();
+                    
+                /******** Update the display year ************/
+				d3.select(".year")
+                    .style("opacity",0.6)
+                    .text(display_year);
+                
+            }
+            
+            // Load the csv file and generate a visualisation based on it
+            // d3.csv asynchronous function
+			d3.csv("./data/Gapminder_All_Time.csv", function(error, data){
+				// handle any data loading errors
+				if(error){
+					console.log("Something went wrong");
+					console.log(error);
+				}else{
+					console.log("Data Loaded");
+                    // Assign  the data object loaded to the global dataset variable
+                    dataset = data;
+                    
+                    // find all years in the dataset
+                    var display_years = [];
+                    for (var i=0; i<dataset.length; i++) {
+                      display_years.push(dataset[i].Year);
+                    }
+                    // Remove duplicate years and sort the years in ascending order
+                    years_Array = Array.from(new Set(display_years)).sort();
+                    // set the display year to the first year in 'years_Array'
+                    display_year = years_Array[0];
+                    
+                    // initialise the slider
+                    // NOTE: the slider used is the jQuery UI slider
+                    $( function() {
+                        $( "#slider" ).slider({
+                            min: 0,
+                            max: years_Array.length-1,
+                            value: index,
+                            animate: true,
+                            slide: function(event, ui) {
+                                display_year = years_Array[ui.value];
+                                index = ui.value
+                                // update visualisation when slider is moved
+                                generateVis();
+                                // update slider value
+                                $('#slider').slider("value", index);
+                                // update year being displayed under the slider
+                                $("#value").text(display_year).css($(".ui-slider-handle", $("#slider")).position());
+                            }
+                        });
+                    } );
+
+                    // Generate the visualisation
+                    generateVis();
+                    // update slider value
+                    $('#slider').slider("value", index);
+                    // update year being displayed under the slider
+                    $("#value").text(display_year).css($(".ui-slider-handle", $("#slider")).position());
+                }
+             });
+            
+            var index = 1;
+            var playInterval;
+            
+            // move through each year when play button pressed, pause anomation on pause button press
+            d3.select("#icon").on("click", function(d) {
+                // check if play or pause button has been clicked
+                var c = d3.select(this).attr("class");
+                if (c=="play"){
+                    d3.select(this)
+                    .attr("src", "./images/pause.png")
+                    .attr("class", "pause");
+                    
+                    playInterval = setInterval(function() {
+                        // update display_year and call generateVis again
+                        display_year = years_Array[index];
+                        index += 1;
+                        // if reached end of years_Array, go back to start
+                        if (index > years_Array.length-1) {
+                            index = 0;
+                        }
+                        //Update the visualisation
+                        generateVis();
+                        // update slider value
+                        $('#slider').slider("value", index);
+                        // update year being displayed under the slider
+                        $("#value").text(display_year).css($(".ui-slider-handle", $("#slider")).position());
+                    }, 1200); 
+                    
+                } else {
+                    d3.select(this)
+                     .attr("src", "./images/play.png")
+                     .attr("class", "play");
+                    clearInterval(playInterval);
+                }
+            });
+            
+            d3.select(".restart").on("click", function(){
+                // reset index to bring display_year back to the start
+                index=0;
+            });
+             
+            </script>
+	</body>
+</html>
